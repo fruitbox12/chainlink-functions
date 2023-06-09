@@ -12,10 +12,10 @@ import "./Donation.sol";
 /// @title Record of which donations are yet to be claimed
 /// @notice The contract stores donations that have ETH attached to them and allows users to make new donations as well as to claim these donations.
 /// @dev This contract utilizes Chainlink Functions and serves as a demo application
-contract Ledger is Initializable, UUPSUpgradeable, OwnableUpgradeable, FunctionsClient {
+contract Upgoaled is Ownable, Initializable, UUPSUpgradeable, OwnableUpgradeable, FunctionsClient {
   using Functions for Functions.Request;
 
-  address[] internal unclaimedDonations;
+  address[] internal remainingClaims;
   mapping(address => Donation) internal donationMap;
   mapping(bytes32 => address) internal runningClaims;
   string internal calculationLogic;
@@ -41,7 +41,7 @@ contract Ledger is Initializable, UUPSUpgradeable, OwnableUpgradeable, Functions
   function donate(string calldata _repository) external payable {
     Donation donation = new Donation{value: msg.value}(_repository, address(this));
     donationMap[address(donation)] = donation;
-    unclaimedDonations.push(address(donation));
+    remainingClaims.push(address(donation));
   }
 
   /// @notice Calculates the amount of ETH to donate
@@ -85,30 +85,30 @@ contract Ledger is Initializable, UUPSUpgradeable, OwnableUpgradeable, Functions
     uint _total = 0;
     uint _number = 0;
 
-    for (uint i = 0; i < unclaimedDonations.length;) {
-      Donation _current = donationMap[unclaimedDonations[i]];
-      uint _balance = unclaimedDonations[i].balance;
+    for (uint i = 0; i < remainingClaims.length;) {
+      Donation _current = donationMap[remainingClaims[i]];
+      uint _balance = remainingClaims[i].balance;
 
       if (_balance > 0 && containsWord(_login, _current.repository())) {
         _total += _balance;
         _number++;
         _current.payout(_maintainer);
-        delete donationMap[unclaimedDonations[i]];
+        delete donationMap[remainingClaims[i]];
       }
       unchecked { i++; }
     }
 
-    address[] memory _unclaimedDonations = new address[](unclaimedDonations.length - _number);
+    address[] memory remainingClaims = new address[](remainingClaims.length - _number);
     uint j = 0;
 
-    for (uint i = 0; i < unclaimedDonations.length;) {
-      if (unclaimedDonations[i].balance > 0) {
-        _unclaimedDonations[j] = unclaimedDonations[i];
+    for (uint i = 0; i < remainingClaims.length;) {
+      if (remainingClaims[i].balance > 0) {
+        _remainingClaims[j] = remainingClaims[i];
         unchecked { j++; }
       }
       unchecked{ i++; }
     }
-    unclaimedDonations = _unclaimedDonations;
+    remainingClaims = _remainingClaims;
 
     emit Claimed(_total, _maintainer);
   }
@@ -162,7 +162,7 @@ contract Ledger is Initializable, UUPSUpgradeable, OwnableUpgradeable, Functions
 
   /// @notice View to see which donations are still open
   function getDonations() public view returns (address[] memory) {
-    return unclaimedDonations;
+    return remainingClaims;
   }
 
   /// @notice The current version of the contract, useful for development purposes
